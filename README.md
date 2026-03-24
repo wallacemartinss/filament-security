@@ -57,7 +57,7 @@ public function panel(Panel $panel): Panel
 
 ## Pillar 1: Disposable Email Blocking
 
-Blocks registration with temporary/disposable email addresses. Ships with **72,000+ built-in domains** (sourced from [disposable/disposable-email-domains](https://github.com/disposable/disposable-email-domains)) and supports custom domains.
+Blocks registration with temporary/disposable email addresses. Ships with **192,000+ built-in domains** (sourced from [disposable/disposable-email-domains](https://github.com/disposable/disposable-email-domains)) and supports custom domains.
 
 Covers all major disposable email providers including Mailinator, YOPmail, GuerrillaMail (all 11 variants), TempMail, ThrowAway, Burner Mail, and thousands more.
 
@@ -130,11 +130,11 @@ Output of `stats`:
 ┌──────────────────────┬────────┐
 │ Source               │ Count  │
 ├──────────────────────┼────────┤
-│ Built-in domains     │ 72,248 │
+│ Built-in domains     │ 192,744 │
 │ Custom file domains  │ 2      │
 │ Config domains       │ 0      │
 │ Whitelisted domains  │ 0      │
-│ Total active domains │ 72,250 │
+│ Total active domains │ 192,746 │
 └──────────────────────┴────────┘
 ```
 
@@ -166,7 +166,7 @@ Output of `stats`:
 
 | Source | Location | How to manage |
 |--------|----------|---------------|
-| Built-in | `data/disposable-domains.json` | Shipped with package (72,000+ domains) |
+| Built-in | `data/disposable-domains.json` | Shipped with package (192,000+ domains) |
 | Custom file | `storage/filament-security/custom-domains.txt` | `php artisan filament-security:domain` |
 | Config | `config/filament-security.php` | Edit config file |
 | Whitelist | `config/filament-security.php` | Edit config file (overrides all) |
