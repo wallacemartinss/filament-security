@@ -1,0 +1,32 @@
+<?php
+
+return [
+
+    'disposable_email' => 'Одноразовые адреса электронной почты не допускаются.',
+    'disposable_email_blocked' => 'Этот провайдер электронной почты не принимается. Пожалуйста, используйте постоянный адрес электронной почты.',
+
+    'honeypot_triggered' => 'Обнаружен спам.',
+
+    'ip_blocked' => 'Ваш IP заблокирован из-за подозрительной активности.',
+    'ip_blocked_reason_failed_login' => 'Слишком много неудачных попыток входа.',
+    'ip_blocked_reason_bot' => 'Обнаружен бот (сработала ловушка).',
+    'ip_blocked_reason_manual' => 'Ручная блокировка через CLI.',
+    'ip_already_blocked' => 'Этот IP уже заблокирован.',
+    'ip_not_found' => 'IP не найден в списке заблокированных.',
+    'ip_unblocked' => 'IP разблокирован.',
+
+    'command' => [
+        'domain_added' => "Домен ':domain' добавлен в список блокировки.",
+        'domain_removed' => "Домен ':domain' удалён из списка блокировки.",
+        'domain_already_blocked' => "Домен ':domain' уже заблокирован.",
+        'domain_not_found' => "Домен ':domain' не найден в списке блокировки.",
+        'domain_invalid' => 'Неверный формат домена.',
+        'no_custom_domains' => 'Пользовательские домены ещё не добавлены.',
+        'no_blocked_ips' => 'Заблокированных IP нет.',
+        'ip_blocked_success' => "IP ':ip' заблокирован.",
+        'ip_blocked_failed' => "Не удалось заблокировать IP ':ip'.",
+        'ip_unblocked_success' => "IP ':ip' разблокирован.",
+        'install_success' => 'Filament Security успешно установлен!',
+    ],
+
+];

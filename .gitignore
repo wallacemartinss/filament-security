@@ -1,0 +1,9 @@
+vendor/
+node_modules/
+.phpunit.cache/
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
