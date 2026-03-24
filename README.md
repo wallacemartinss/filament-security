@@ -2,6 +2,13 @@
 
 Security plugin for Filament v5 with three protection pillars: **disposable email blocking**, **honeypot bot protection**, and **automatic Cloudflare IP blocking**.
 
+## Version Compatibility
+
+| Package Version | Filament | Livewire | Laravel | Branch |
+|-----------------|----------|----------|---------|--------|
+| 2.x | v5 | v4 | 11 / 12 | `main` |
+| 1.x | v4 | v3 | 11 / 12 | `1.x` |
+
 ## Requirements
 
 - PHP 8.2+
@@ -11,7 +18,11 @@ Security plugin for Filament v5 with three protection pillars: **disposable emai
 ## Installation
 
 ```bash
-composer require wallacemartinss/filament-security
+# Filament v5
+composer require wallacemartinss/filament-security:"^2.0"
+
+# Filament v4
+composer require wallacemartinss/filament-security:"^1.0"
 ```
 
 Publish the config file:
