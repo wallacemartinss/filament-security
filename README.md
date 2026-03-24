@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="art/banner.png" alt="Filament Security" width="100%">
+</p>
+
 # Filament Security
 
 Security plugin for Filament v5 with three protection pillars: **disposable email blocking**, **honeypot bot protection**, and **automatic Cloudflare IP blocking**.
