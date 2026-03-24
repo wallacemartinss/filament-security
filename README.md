@@ -7,7 +7,7 @@ Security plugin for Filament v4 with three protection pillars: **disposable emai
 ## Requirements
 
 - PHP 8.2+
-- Laravel 11 or 12
+- Laravel 11, 12 or 13
 - Filament v4
 
 ## Installation
