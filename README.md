@@ -6,13 +6,13 @@ Security plugin for Filament v5 with three protection pillars: **disposable emai
 
 | Package Version | Filament | Livewire | Laravel | Branch |
 |-----------------|----------|----------|---------|--------|
-| 2.x | v5 | v4 | 11 / 12 | `main` |
-| 1.x | v4 | v3 | 11 / 12 | `1.x` |
+| 2.x | v5 | v4 | 11 / 12 / 13 | `main` |
+| 1.x | v4 | v3 | 11 / 12 / 13 | `1.x` |
 
 ## Requirements
 
 - PHP 8.2+
-- Laravel 11 or 12
+- Laravel 11, 12 or 13
 - Filament v5
 
 ## Installation
