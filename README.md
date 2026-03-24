@@ -1,5 +1,5 @@
 <p align="center">
-    <img src="art/banner.png" alt="Filament Security" width="100%">
+    <img src="art/banner.jpg" alt="Filament Security" width="100%">
 </p>
 
 # Filament Security
