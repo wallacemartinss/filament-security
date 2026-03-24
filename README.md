@@ -268,11 +268,26 @@ FilamentSecurityPlugin::make()
     ->cloudflareBlocking()
 ```
 
-### Cloudflare API Token
+### How to get your Cloudflare credentials
 
-Create a token at [Cloudflare Dashboard](https://dash.cloudflare.com/profile/api-tokens) with permissions:
+#### API Token
 
-- **Zone > Firewall Services > Edit**
+1. Go to [Cloudflare Dashboard > My Profile > API Tokens](https://dash.cloudflare.com/profile/api-tokens)
+2. Click **"Create Token"**
+3. Select **"Create Custom Token"**
+4. Configure the token:
+   - **Token name:** `FilamentSecurity`
+   - **Permissions:** `Zone` > `Firewall Services` > `Edit`
+   - **Zone Resources:** `Include` > `Specific zone` > select your domain
+5. Click **"Continue to summary"** > **"Create Token"**
+6. Copy the token and add to your `.env` as `CLOUDFLARE_API_TOKEN`
+
+#### Zone ID
+
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) and select your domain
+2. On the **Overview** page, scroll down to the right sidebar
+3. Under **API** section, copy the **Zone ID**
+4. Add to your `.env` as `CLOUDFLARE_ZONE_ID`
 
 ### Automatic Blocking Triggers
 
