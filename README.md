@@ -1,17 +1,23 @@
 # Filament Security
 
-Security plugin for Filament v5 with three protection pillars: **disposable email blocking**, **honeypot bot protection**, and **automatic Cloudflare IP blocking**.
+Security plugin for Filament v4 with three protection pillars: **disposable email blocking**, **honeypot bot protection**, and **automatic Cloudflare IP blocking**.
+
+> **Note:** This is the `1.x` branch for **Filament v4**. For Filament v5, use the `2.x` branch (`main`).
 
 ## Requirements
 
 - PHP 8.2+
 - Laravel 11 or 12
-- Filament v5
+- Filament v4
 
 ## Installation
 
 ```bash
-composer require wallacemartinss/filament-security
+# Filament v4
+composer require wallacemartinss/filament-security:"^1.0"
+
+# Filament v5
+composer require wallacemartinss/filament-security:"^2.0"
 ```
 
 Publish the config file:
