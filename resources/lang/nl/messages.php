@@ -5,6 +5,11 @@ return [
     'disposable_email' => 'Wegwerp e-mailadressen zijn niet toegestaan.',
     'disposable_email_blocked' => 'Deze e-mailprovider wordt niet geaccepteerd. Gebruik alstublieft een permanent e-mailadres.',
 
+    'dns_mx_suspicious' => 'Dit e-maildomein lijkt geen geldige mailservers te hebben. Gebruik alstublieft een geldig e-mailadres.',
+    'domain_too_young' => 'Dit e-maildomein is te recent geregistreerd (minimaal :days dagen vereist). Gebruik alstublieft een gevestigde e-mailprovider.',
+
+    'session_terminated' => 'Uw sessie is beëindigd omdat uw account is ingelogd vanaf een ander apparaat.',
+
     'honeypot_triggered' => 'Spam gedetecteerd.',
 
     'ip_blocked' => 'Uw IP is geblokkeerd vanwege verdachte activiteit.',

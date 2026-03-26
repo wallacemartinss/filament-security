@@ -5,6 +5,11 @@ return [
     'disposable_email' => '不允许使用一次性电子邮件地址。',
     'disposable_email_blocked' => '此电子邮件提供商不被接受。请使用永久电子邮件地址。',
 
+    'dns_mx_suspicious' => '此电子邮件域似乎没有有效的邮件服务器。请使用有效的电子邮件地址。',
+    'domain_too_young' => '此电子邮件域注册时间过短（最少需要 :days 天）。请使用成熟的电子邮件提供商。',
+
+    'session_terminated' => '您的会话已被终止，因为您的账户已从另一台设备登录。',
+
     'honeypot_triggered' => '检测到垃圾邮件。',
 
     'ip_blocked' => '由于可疑活动，您的IP已被封锁。',

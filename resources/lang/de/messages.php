@@ -5,6 +5,11 @@ return [
     'disposable_email' => 'Einweg-E-Mail-Adressen sind nicht erlaubt.',
     'disposable_email_blocked' => 'Dieser E-Mail-Anbieter wird nicht akzeptiert. Bitte verwenden Sie eine permanente E-Mail-Adresse.',
 
+    'dns_mx_suspicious' => 'Diese E-Mail-Domain scheint keine gültigen Mailserver zu haben. Bitte verwenden Sie eine gültige E-Mail-Adresse.',
+    'domain_too_young' => 'Diese E-Mail-Domain wurde zu kürzlich registriert (mindestens :days Tage erforderlich). Bitte verwenden Sie einen etablierten E-Mail-Anbieter.',
+
+    'session_terminated' => 'Ihre Sitzung wurde beendet, da Ihr Konto von einem anderen Gerät angemeldet wurde.',
+
     'honeypot_triggered' => 'Spam erkannt.',
 
     'ip_blocked' => 'Ihre IP wurde aufgrund verdächtiger Aktivitäten gesperrt.',

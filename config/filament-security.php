@@ -34,6 +34,68 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | DNS/MX Verification
+    |--------------------------------------------------------------------------
+    |
+    | Verify that email domains have valid MX or A/AAAA records.
+    | Blocks domains that cannot receive email (no mail infrastructure).
+    | Also detects suspicious MX targets (localhost, private IPs).
+    |
+    */
+
+    'dns_verification' => [
+        'enabled' => env('FILAMENT_SECURITY_DNS_CHECK', true),
+
+        // Cache DNS results (recommended to avoid repeated lookups)
+        'cache_enabled' => env('FILAMENT_SECURITY_CACHE', true),
+
+        // Cache TTL in minutes (default: 1 hour)
+        'cache_ttl' => 60,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Domain Age Verification (RDAP)
+    |--------------------------------------------------------------------------
+    |
+    | Check domain registration age via RDAP (successor to WHOIS).
+    | Blocks recently registered domains commonly used for spam/fraud.
+    |
+    */
+
+    'domain_age' => [
+        'enabled' => env('FILAMENT_SECURITY_DOMAIN_AGE', false),
+
+        // Minimum domain age in days
+        'min_days' => env('FILAMENT_SECURITY_DOMAIN_MIN_DAYS', 30),
+
+        // Block registration when RDAP lookup fails (conservative: false)
+        'block_on_failure' => env('FILAMENT_SECURITY_DOMAIN_AGE_STRICT', false),
+
+        // Cache RDAP results (recommended — external HTTP calls)
+        'cache_enabled' => env('FILAMENT_SECURITY_CACHE', true),
+
+        // Cache TTL in minutes (default: 24 hours)
+        'cache_ttl' => 1440,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Single Session (One Device Per User)
+    |--------------------------------------------------------------------------
+    |
+    | Enforce one active session per user. When a user logs in on a new
+    | browser/device, all previous sessions are terminated immediately.
+    | Works with database and Redis session drivers.
+    |
+    */
+
+    'single_session' => [
+        'enabled' => env('FILAMENT_SECURITY_SINGLE_SESSION', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Honeypot Protection
     |--------------------------------------------------------------------------
     |

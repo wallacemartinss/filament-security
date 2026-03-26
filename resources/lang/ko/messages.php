@@ -5,6 +5,11 @@ return [
     'disposable_email' => '일회용 이메일 주소는 허용되지 않습니다.',
     'disposable_email_blocked' => '이 이메일 제공업체는 허용되지 않습니다. 영구적인 이메일 주소를 사용해 주세요.',
 
+    'dns_mx_suspicious' => '이 이메일 도메인에 유효한 메일 서버가 없는 것 같습니다. 유효한 이메일 주소를 사용해 주세요.',
+    'domain_too_young' => '이 이메일 도메인이 너무 최근에 등록되었습니다 (최소 :days일 필요). 확립된 이메일 제공업체를 사용해 주세요.',
+
+    'session_terminated' => '다른 기기에서 계정에 로그인하여 세션이 종료되었습니다.',
+
     'honeypot_triggered' => '스팸이 감지되었습니다.',
 
     'ip_blocked' => '의심스러운 활동으로 인해 IP가 차단되었습니다.',

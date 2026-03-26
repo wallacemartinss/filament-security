@@ -4,7 +4,7 @@
 
 # Filament Security
 
-Security plugin for Filament v4 with three protection pillars: **disposable email blocking**, **honeypot bot protection**, and **automatic Cloudflare IP blocking**.
+Security plugin for Filament v4 with six protection layers: **disposable email blocking**, **DNS/MX verification**, **RDAP domain age check**, **single session enforcement**, **honeypot bot protection**, and **automatic Cloudflare IP blocking**.
 
 > **Note:** This is the `1.x` branch for **Filament v4**. For Filament v5, use the `2.x` branch (`main`).
 
@@ -45,12 +45,13 @@ public function panel(Panel $panel): Panel
             FilamentSecurityPlugin::make()
                 ->disposableEmailProtection()
                 ->honeypotProtection()
+                ->singleSession()
                 ->cloudflareBlocking(),
         ]);
 }
 ```
 
-## Pillar 1: Disposable Email Blocking
+## Layer 1: Disposable Email Blocking
 
 Blocks registration with temporary/disposable email addresses. Ships with **192,000+ built-in domains** (sourced from [disposable/disposable-email-domains](https://github.com/disposable/disposable-email-domains)) and supports custom domains.
 
@@ -166,7 +167,235 @@ Output of `stats`:
 | Config | `config/filament-security.php` | Edit config file |
 | Whitelist | `config/filament-security.php` | Edit config file (overrides all) |
 
-## Pillar 2: Honeypot Protection
+## Layer 2: DNS/MX Verification
+
+Verifies that the email domain has valid mail infrastructure. Blocks domains that **cannot receive email** — domains with no MX records and no A/AAAA fallback, or domains with MX records pointing to suspicious targets (localhost, private IPs).
+
+### How it works
+
+```
+Email submitted → Extract domain → Check MX records
+  ├─ Has MX → Validate targets (reject localhost, private IPs, loopback)
+  ├─ No MX → Check A/AAAA records (RFC 5321 fallback)
+  │   ├─ Has A/AAAA → Allow (can receive email via implicit MX)
+  │   └─ No records → Block (domain cannot receive email)
+  └─ DNS error → Allow (fail-open, don't block legitimate users)
+```
+
+### Enabled by default
+
+DNS/MX verification is enabled by default and runs automatically on the registration form alongside the disposable email check. No extra setup required.
+
+### Usage as Validation Rule
+
+```php
+use WallaceMartinss\FilamentSecurity\DisposableEmail\Rules\DnsMxRule;
+
+// In any form request or validator
+'email' => ['required', 'email', new DnsMxRule],
+```
+
+### Programmatic Check
+
+```php
+use WallaceMartinss\FilamentSecurity\DisposableEmail\DnsVerificationService;
+
+DnsVerificationService::isSuspicious('user@nonexistent-domain.xyz'); // true
+DnsVerificationService::isSuspicious('user@gmail.com');               // false
+
+// Check domain directly
+DnsVerificationService::isDomainSuspicious('fake-domain.xyz'); // true
+```
+
+### Configuration
+
+```php
+// config/filament-security.php
+
+'dns_verification' => [
+    'enabled' => env('FILAMENT_SECURITY_DNS_CHECK', true),
+
+    // Cache DNS results (recommended to avoid repeated lookups)
+    'cache_enabled' => env('FILAMENT_SECURITY_CACHE', true),
+
+    // Cache TTL in minutes (default: 1 hour)
+    'cache_ttl' => 60,
+],
+```
+
+### What is detected
+
+| Condition | Result |
+|-----------|--------|
+| No MX, no A, no AAAA records | **Blocked** — domain cannot receive email |
+| MX pointing to `localhost` | **Blocked** — suspicious configuration |
+| MX pointing to private/reserved IP (127.x, 10.x, 192.168.x) | **Blocked** — not a real mail server |
+| Valid MX records | **Allowed** |
+| No MX but has A/AAAA record | **Allowed** — RFC 5321 implicit MX |
+| DNS lookup fails | **Allowed** — fail-open to avoid false positives |
+
+## Layer 3: Domain Age Verification (RDAP)
+
+Checks the domain registration age via [RDAP](https://about.rdap.org/) (Registration Data Access Protocol), the modern successor to WHOIS. Blocks recently registered domains — a common pattern in spam, phishing, and fraud campaigns.
+
+### How it works
+
+```
+Email submitted → Extract domain → Get TLD
+  → Query IANA RDAP bootstrap (https://data.iana.org/rdap/dns.json)
+  → Find RDAP server for TLD
+  → Query RDAP server for domain registration date
+  → Calculate domain age in days
+  → Block if age < min_days
+```
+
+### Disabled by default
+
+This feature makes external HTTP calls to RDAP servers, so it is **disabled by default**. Enable it via `.env`:
+
+```env
+FILAMENT_SECURITY_DOMAIN_AGE=true
+FILAMENT_SECURITY_DOMAIN_MIN_DAYS=30
+```
+
+### Usage as Validation Rule
+
+```php
+use WallaceMartinss\FilamentSecurity\DisposableEmail\Rules\DomainAgeRule;
+
+// In any form request or validator
+'email' => ['required', 'email', new DomainAgeRule],
+```
+
+### Programmatic Check
+
+```php
+use WallaceMartinss\FilamentSecurity\DisposableEmail\RdapService;
+
+RdapService::isDomainTooYoung('user@brand-new-domain.com'); // true (if < 30 days old)
+RdapService::isDomainTooYoung('user@gmail.com');             // false
+
+// Get the registration date directly
+$date = RdapService::getRegistrationDate('example.com');
+// Returns Carbon instance or null
+```
+
+### Configuration
+
+```php
+// config/filament-security.php
+
+'domain_age' => [
+    'enabled' => env('FILAMENT_SECURITY_DOMAIN_AGE', false),
+
+    // Minimum domain age in days
+    'min_days' => env('FILAMENT_SECURITY_DOMAIN_MIN_DAYS', 30),
+
+    // Block when RDAP lookup fails? (conservative: false)
+    'block_on_failure' => env('FILAMENT_SECURITY_DOMAIN_AGE_STRICT', false),
+
+    // Cache RDAP results (recommended — external HTTP calls)
+    'cache_enabled' => env('FILAMENT_SECURITY_CACHE', true),
+
+    // Cache TTL in minutes (default: 24 hours)
+    'cache_ttl' => 1440,
+],
+```
+
+### Failure behavior
+
+| Scenario | `block_on_failure=false` (default) | `block_on_failure=true` |
+|----------|-----------------------------------|------------------------|
+| RDAP server unreachable | Allow | Block |
+| TLD not in IANA bootstrap | Allow | Block |
+| No registration date in response | Allow | Block |
+| Domain age >= min_days | Allow | Allow |
+| Domain age < min_days | Block | Block |
+
+### Caching
+
+RDAP results are cached to minimize external HTTP calls:
+
+- **IANA bootstrap data** — cached for 24 hours (shared across all domains)
+- **Domain registration dates** — cached for 24 hours (per domain, configurable via `cache_ttl`)
+
+## Layer 4: Single Session Enforcement
+
+Ensures only **one active session per user**. When a user logs in from a new browser or device, all previous sessions are immediately terminated. Works with both **database** and **Redis** session drivers.
+
+### How it works
+
+```
+User logs in on Browser A → Session A created, tracked as active
+User logs in on Browser B → Session B created
+  → Login event fires → Session A destroyed
+  → Middleware updates active session to B
+User returns to Browser A → Session A no longer exists → Redirected to login
+```
+
+### Disabled by default
+
+Enable via `.env`:
+
+```env
+FILAMENT_SECURITY_SINGLE_SESSION=true
+```
+
+And in the plugin:
+
+```php
+FilamentSecurityPlugin::make()
+    ->singleSession()
+```
+
+### Session driver support
+
+| Driver | Destruction method | Enforcement |
+|--------|-------------------|-------------|
+| `database` | Bulk DELETE from `sessions` table by `user_id` | Immediate (session row deleted) |
+| `redis` | Destroy session key via session handler | Immediate (key deleted) + middleware fallback |
+| `file` | Destroy session file via session handler | Immediate (file deleted) + middleware fallback |
+
+For the **database** driver, all other sessions for the user are deleted in a single query on login. For **Redis** and **file** drivers, the previously tracked session is destroyed via the session handler, and a middleware acts as a safety net to catch any edge cases.
+
+### Architecture
+
+The feature uses a **dual mechanism** for reliability:
+
+1. **Login event listener** (`HandleSuccessfulLogin`) — immediately destroys other sessions on login
+2. **Middleware** (`SingleSessionMiddleware`) — validates on every request that the current session is still the active one
+
+The middleware is automatically registered in the `web` middleware group when the feature is enabled.
+
+### Programmatic Usage
+
+```php
+use WallaceMartinss\FilamentSecurity\SingleSession\SingleSessionService;
+
+// Invalidate all other sessions for a user (call after manual login)
+SingleSessionService::handleLogin($user);
+
+// Clear session tracking (call on manual logout)
+SingleSessionService::clearTracking($user->id);
+```
+
+### Configuration
+
+```php
+// config/filament-security.php
+
+'single_session' => [
+    'enabled' => env('FILAMENT_SECURITY_SINGLE_SESSION', false),
+],
+```
+
+### Requirements
+
+- Session driver must be `database`, `redis`, or `file`
+- For `database`: the `sessions` table must exist (ships with Laravel by default)
+- Cache driver must be configured (used for session tracking across drivers)
+
+## Layer 5: Honeypot Protection
 
 Protects registration forms against bots using invisible honeypot fields. Powered by [spatie/laravel-honeypot](https://github.com/spatie/laravel-honeypot).
 
@@ -225,9 +454,9 @@ return [
 
 ### Spam Detection Response
 
-When spam is detected, the request is aborted with a `403 Forbidden` response. A `SpamDetectedEvent` is also fired, which you can listen to for logging or IP blocking (Pillar 3).
+When spam is detected, the request is aborted with a `403 Forbidden` response. A `SpamDetectedEvent` is also fired, which you can listen to for logging or IP blocking (Layer 6).
 
-## Pillar 3: Cloudflare IP Blocking
+## Layer 6: Cloudflare IP Blocking
 
 Automatically blocks suspicious IPs on Cloudflare WAF after repeated failed login attempts or bot detection via honeypot.
 
@@ -373,19 +602,30 @@ app(BlockIpService::class)->remainingAttempts($ip);
 
 ```env
 # Disposable Email
-FILAMENT_SECURITY_DISPOSABLE_EMAIL=true
-FILAMENT_SECURITY_CACHE=true
+FILAMENT_SECURITY_DISPOSABLE_EMAIL=true   # Enable/disable disposable email blocking
+FILAMENT_SECURITY_CACHE=true              # Enable/disable caching (shared across features)
+
+# DNS/MX Verification
+FILAMENT_SECURITY_DNS_CHECK=true          # Enable/disable DNS/MX check (default: enabled)
+
+# Domain Age (RDAP)
+FILAMENT_SECURITY_DOMAIN_AGE=false        # Enable/disable domain age check (default: disabled)
+FILAMENT_SECURITY_DOMAIN_MIN_DAYS=30      # Minimum domain age in days
+FILAMENT_SECURITY_DOMAIN_AGE_STRICT=false # Block when RDAP lookup fails
+
+# Single Session
+FILAMENT_SECURITY_SINGLE_SESSION=false    # Enable/disable one session per user (default: disabled)
 
 # Honeypot
-FILAMENT_SECURITY_HONEYPOT=true
+FILAMENT_SECURITY_HONEYPOT=true           # Enable/disable honeypot protection
 
 # Cloudflare
-FILAMENT_SECURITY_CLOUDFLARE=false
-CLOUDFLARE_API_TOKEN=
-CLOUDFLARE_ZONE_ID=
-FILAMENT_SECURITY_CF_MAX_ATTEMPTS=5
-FILAMENT_SECURITY_CF_DECAY_MINUTES=30
-FILAMENT_SECURITY_CF_MODE=block
+FILAMENT_SECURITY_CLOUDFLARE=false        # Enable/disable Cloudflare blocking
+CLOUDFLARE_API_TOKEN=                     # Cloudflare API token
+CLOUDFLARE_ZONE_ID=                       # Cloudflare zone ID
+FILAMENT_SECURITY_CF_MAX_ATTEMPTS=5       # Failed attempts before blocking
+FILAMENT_SECURITY_CF_DECAY_MINUTES=30     # Time window for counting attempts
+FILAMENT_SECURITY_CF_MODE=block           # 'block' or 'challenge'
 ```
 
 ## Testing
@@ -396,7 +636,7 @@ php artisan test packages/filament-security/tests/
 
 ## Translations
 
-The package includes translations in **English** and **Brazilian Portuguese** (`pt_BR`).
+The package includes translations in **15 languages**: English, Brazilian Portuguese, German, Spanish, French, Italian, Japanese, Korean, Dutch, Polish, Russian, Turkish, Ukrainian, Arabic, and Chinese (Simplified).
 
 To publish translations:
 

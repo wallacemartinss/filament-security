@@ -5,6 +5,11 @@ return [
     'disposable_email' => 'Jednorazowe adresy e-mail nie są dozwolone.',
     'disposable_email_blocked' => 'Ten dostawca poczty e-mail nie jest akceptowany. Proszę użyć stałego adresu e-mail.',
 
+    'dns_mx_suspicious' => 'Ta domena e-mail nie wydaje się mieć prawidłowych serwerów pocztowych. Proszę użyć prawidłowego adresu e-mail.',
+    'domain_too_young' => 'Ta domena e-mail została zarejestrowana zbyt niedawno (wymagane minimum :days dni). Proszę użyć ustalonego dostawcy poczty e-mail.',
+
+    'session_terminated' => 'Twoja sesja została zakończona, ponieważ Twoje konto zostało zalogowane z innego urządzenia.',
+
     'honeypot_triggered' => 'Wykryto spam.',
 
     'ip_blocked' => 'Twój adres IP został zablokowany z powodu podejrzanej aktywności.',

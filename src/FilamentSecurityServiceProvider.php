@@ -3,6 +3,8 @@
 namespace WallaceMartinss\FilamentSecurity;
 
 use Illuminate\Auth\Events\Failed;
+use Illuminate\Auth\Events\Login;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Event;
 use Spatie\Honeypot\Events\SpamDetectedEvent;
 use Spatie\LaravelPackageTools\Package;
@@ -10,7 +12,10 @@ use Spatie\LaravelPackageTools\PackageServiceProvider;
 use WallaceMartinss\FilamentSecurity\Cloudflare\BlockIpService;
 use WallaceMartinss\FilamentSecurity\Cloudflare\CloudflareService;
 use WallaceMartinss\FilamentSecurity\Listeners\HandleFailedLogin;
+use WallaceMartinss\FilamentSecurity\Listeners\HandleLogout;
 use WallaceMartinss\FilamentSecurity\Listeners\HandleSpamDetected;
+use WallaceMartinss\FilamentSecurity\Listeners\HandleSuccessfulLogin;
+use WallaceMartinss\FilamentSecurity\SingleSession\SingleSessionMiddleware;
 
 class FilamentSecurityServiceProvider extends PackageServiceProvider
 {
@@ -36,6 +41,7 @@ class FilamentSecurityServiceProvider extends PackageServiceProvider
     {
         $this->registerCommands();
         $this->registerEventListeners();
+        $this->registerSingleSessionMiddleware();
     }
 
     protected function registerCommands(): void
@@ -51,11 +57,23 @@ class FilamentSecurityServiceProvider extends PackageServiceProvider
 
     protected function registerEventListeners(): void
     {
-        if (! config('filament-security.cloudflare.enabled', false)) {
+        if (config('filament-security.cloudflare.enabled', false)) {
+            Event::listen(Failed::class, HandleFailedLogin::class);
+            Event::listen(SpamDetectedEvent::class, HandleSpamDetected::class);
+        }
+
+        if (config('filament-security.single_session.enabled', false)) {
+            Event::listen(Login::class, HandleSuccessfulLogin::class);
+            Event::listen(Logout::class, HandleLogout::class);
+        }
+    }
+
+    protected function registerSingleSessionMiddleware(): void
+    {
+        if (! config('filament-security.single_session.enabled', false)) {
             return;
         }
 
-        Event::listen(Failed::class, HandleFailedLogin::class);
-        Event::listen(SpamDetectedEvent::class, HandleSpamDetected::class);
+        $this->app['router']->pushMiddlewareToGroup('web', SingleSessionMiddleware::class);
     }
 }

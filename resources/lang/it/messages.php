@@ -5,6 +5,11 @@ return [
     'disposable_email' => 'Gli indirizzi e-mail usa e getta non sono consentiti.',
     'disposable_email_blocked' => 'Questo provider di posta elettronica non è accettato. Si prega di utilizzare un indirizzo e-mail permanente.',
 
+    'dns_mx_suspicious' => 'Questo dominio e-mail non sembra avere server di posta validi. Si prega di utilizzare un indirizzo e-mail valido.',
+    'domain_too_young' => 'Questo dominio e-mail è stato registrato troppo recentemente (minimo :days giorni richiesti). Si prega di utilizzare un provider di posta consolidato.',
+
+    'session_terminated' => 'La tua sessione è stata terminata perché il tuo account è stato connesso da un altro dispositivo.',
+
     'honeypot_triggered' => 'Spam rilevato.',
 
     'ip_blocked' => 'Il tuo IP è stato bloccato a causa di attività sospette.',

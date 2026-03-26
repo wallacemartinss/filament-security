@@ -13,6 +13,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | DNS/MX Verification
+    |--------------------------------------------------------------------------
+    */
+
+    'dns_mx_suspicious' => 'This email domain does not appear to have valid mail servers. Please use a valid email address.',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Domain Age (RDAP)
+    |--------------------------------------------------------------------------
+    */
+
+    'domain_too_young' => 'This email domain was registered too recently (minimum :days days required). Please use an established email provider.',
+
+    /*
+    |--------------------------------------------------------------------------
+    | Single Session
+    |--------------------------------------------------------------------------
+    */
+
+    'session_terminated' => 'Your session was terminated because your account was logged in from another device.',
+
+    /*
+    |--------------------------------------------------------------------------
     | Honeypot
     |--------------------------------------------------------------------------
     */

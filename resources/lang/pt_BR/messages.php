@@ -5,6 +5,11 @@ return [
     'disposable_email' => 'Endereços de email descartáveis não são permitidos.',
     'disposable_email_blocked' => 'Este provedor de email não é aceito. Por favor, use um endereço de email permanente.',
 
+    'dns_mx_suspicious' => 'Este domínio de email não parece ter servidores de email válidos. Por favor, use um endereço de email válido.',
+    'domain_too_young' => 'Este domínio de email foi registrado muito recentemente (mínimo de :days dias). Por favor, use um provedor de email estabelecido.',
+
+    'session_terminated' => 'Sua sessão foi encerrada porque sua conta foi acessada em outro dispositivo.',
+
     'honeypot_triggered' => 'Spam detectado.',
 
     'ip_blocked' => 'Seu IP foi bloqueado devido a atividade suspeita.',

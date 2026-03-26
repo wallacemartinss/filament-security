@@ -2,9 +2,11 @@
 
 namespace WallaceMartinss\FilamentSecurity\Auth\Concerns;
 
-use Filament\Schemas\Components\Component;
 use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Component;
 use WallaceMartinss\FilamentSecurity\DisposableEmail\Rules\DisposableEmailRule;
+use WallaceMartinss\FilamentSecurity\DisposableEmail\Rules\DnsMxRule;
+use WallaceMartinss\FilamentSecurity\DisposableEmail\Rules\DomainAgeRule;
 
 trait HasDisposableEmailProtection
 {
@@ -17,8 +19,22 @@ trait HasDisposableEmailProtection
             ->maxLength(255)
             ->unique($this->getUserModel());
 
+        $rules = [];
+
         if (config('filament-security.disposable_email.enabled', true)) {
-            $component->rules([new DisposableEmailRule]);
+            $rules[] = new DisposableEmailRule;
+        }
+
+        if (config('filament-security.dns_verification.enabled', true)) {
+            $rules[] = new DnsMxRule;
+        }
+
+        if (config('filament-security.domain_age.enabled', false)) {
+            $rules[] = new DomainAgeRule;
+        }
+
+        if (! empty($rules)) {
+            $component->rules($rules);
         }
 
         return $component;

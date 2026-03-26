@@ -5,6 +5,11 @@ return [
     'disposable_email' => 'Les adresses e-mail jetables ne sont pas autorisées.',
     'disposable_email_blocked' => "Ce fournisseur d'e-mail n'est pas accepté. Veuillez utiliser une adresse e-mail permanente.",
 
+    'dns_mx_suspicious' => 'Ce domaine e-mail ne semble pas avoir de serveurs de messagerie valides. Veuillez utiliser une adresse e-mail valide.',
+    'domain_too_young' => "Ce domaine e-mail a été enregistré trop récemment (minimum :days jours requis). Veuillez utiliser un fournisseur d'e-mail établi.",
+
+    'session_terminated' => 'Votre session a été terminée car votre compte a été connecté depuis un autre appareil.',
+
     'honeypot_triggered' => 'Spam détecté.',
 
     'ip_blocked' => 'Votre IP a été bloquée en raison d\'une activité suspecte.',

@@ -15,6 +15,8 @@ class FilamentSecurityPlugin implements Plugin
 
     protected bool $hasCloudflareBlocking = false;
 
+    protected bool $hasSingleSession = false;
+
     public static function make(): static
     {
         return app(static::class);
@@ -85,6 +87,13 @@ class FilamentSecurityPlugin implements Plugin
         return $this;
     }
 
+    public function singleSession(bool $condition = true): static
+    {
+        $this->hasSingleSession = $condition;
+
+        return $this;
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Getters
@@ -104,5 +113,10 @@ class FilamentSecurityPlugin implements Plugin
     public function hasCloudflareBlocking(): bool
     {
         return $this->hasCloudflareBlocking && config('filament-security.cloudflare.enabled', false);
+    }
+
+    public function hasSingleSession(): bool
+    {
+        return $this->hasSingleSession && config('filament-security.single_session.enabled', false);
     }
 }
