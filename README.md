@@ -4,6 +4,10 @@
 
 # Filament Security
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/wallacemartinss/filament-security.svg?style=flat-square)](https://packagist.org/packages/wallacemartinss/filament-security)
+[![Total Downloads](https://img.shields.io/packagist/dt/wallacemartinss/filament-security.svg?style=flat-square)](https://packagist.org/packages/wallacemartinss/filament-security)
+[![License](https://img.shields.io/packagist/l/wallacemartinss/filament-security.svg?style=flat-square)](https://packagist.org/packages/wallacemartinss/filament-security)
+
 Security plugin for Filament v4 with eight protection layers: **disposable email blocking**, **DNS/MX verification**, **RDAP domain age check**, **single session enforcement**, **honeypot bot protection**, **Cloudflare IP blocking**, **malicious scan detection**, and a **security event dashboard** with real-time analytics.
 
 ## Screenshots
