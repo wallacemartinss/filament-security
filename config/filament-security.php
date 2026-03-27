@@ -137,4 +137,51 @@ return [
         'note_prefix' => 'FilamentSecurity: Auto-blocked',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Malicious Scan Protection
+    |--------------------------------------------------------------------------
+    |
+    | Block requests to known exploit paths, config files, web shells,
+    | and CMS admin pages. Returns 404 and logs the attempt.
+    |
+    */
+
+    'malicious_scan' => [
+        'enabled' => env('FILAMENT_SECURITY_MALICIOUS_SCAN', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Security Event Log
+    |--------------------------------------------------------------------------
+    |
+    | Record all security events (blocked emails, honeypot triggers,
+    | IP blocks, etc.) with a Filament dashboard for monitoring.
+    | Requires running the migration for the security_events table.
+    |
+    */
+
+    'event_log' => [
+        'enabled' => env('FILAMENT_SECURITY_EVENT_LOG', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | IpInfo Integration (Optional)
+    |--------------------------------------------------------------------------
+    |
+    | Enrich security events with IP geolocation data from ipinfo.io.
+    | Only used if a token is provided. Get a free token at ipinfo.io.
+    |
+    */
+
+    'ipinfo' => [
+        'token' => env('IPINFO_TOKEN'),
+        'timeout' => 5,
+
+        // Cache TTL in minutes (default: 24 hours)
+        'cache_ttl' => 1440,
+    ],
+
 ];

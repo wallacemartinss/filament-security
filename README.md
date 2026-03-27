@@ -4,7 +4,21 @@
 
 # Filament Security
 
-Security plugin for Filament v4 with six protection layers: **disposable email blocking**, **DNS/MX verification**, **RDAP domain age check**, **single session enforcement**, **honeypot bot protection**, and **automatic Cloudflare IP blocking**.
+Security plugin for Filament v4 with eight protection layers: **disposable email blocking**, **DNS/MX verification**, **RDAP domain age check**, **single session enforcement**, **honeypot bot protection**, **Cloudflare IP blocking**, **malicious scan detection**, and a **security event dashboard** with real-time analytics.
+
+## Screenshots
+
+### Email Validation
+
+| DNS/MX Verification | Disposable Email Blocking |
+|:---:|:---:|
+| ![DNS/MX Validation](art/01-domain-youg-validation.png) | ![Disposable Email](art/02-domain-disposable-validation.png) |
+
+### Security Event Dashboard
+
+| Stats, Tabs & Event Table | Charts & Top Offending IPs |
+|:---:|:---:|
+| ![Dashboard - Events](art/03-dasboard.png) | ![Dashboard - Charts](art/04-dashboard.png) |
 
 > **Note:** This is the `1.x` branch for **Filament v4**. For Filament v5, use the `2.x` branch (`main`).
 
@@ -30,6 +44,28 @@ Publish the config file:
 php artisan filament-security:install
 ```
 
+If you enable the **Event Log** (Layer 8) or **Cloudflare IP Blocking** (Layer 6), publish and run the migrations:
+
+```bash
+php artisan vendor:publish --tag=filament-security-migrations
+php artisan migrate
+```
+
+### Tailwind CSS (required for custom views)
+
+If you use a custom Filament theme, add the plugin's source paths to your `resources/css/filament/admin/theme.css` so Tailwind can scan the plugin's views and classes:
+
+```css
+@source '../../../../vendor/wallacemartinss/filament-security/resources/views/**/*';
+@source '../../../../vendor/wallacemartinss/filament-security/src/**/*';
+```
+
+Then rebuild your theme:
+
+```bash
+npm run build
+```
+
 Register the plugin in your `AdminPanelProvider` (**after** `->registration()`):
 
 ```php
@@ -43,10 +79,12 @@ public function panel(Panel $panel): Panel
         // ...
         ->plugins([
             FilamentSecurityPlugin::make()
-                ->disposableEmailProtection()
-                ->honeypotProtection()
-                ->singleSession()
-                ->cloudflareBlocking(),
+                ->disposableEmailProtection()  // Layer 1 (enabled by default)
+                ->honeypotProtection()         // Layer 5 (enabled by default)
+                ->singleSession()              // Layer 4
+                ->maliciousScanProtection()    // Layer 7
+                ->cloudflareBlocking()         // Layer 6
+                ->eventLog(),                  // Layer 8 — Security dashboard
         ]);
 }
 ```
@@ -104,57 +142,22 @@ DisposableEmailService::isDisposable('user@gmail.com');      // false
 
 ### Managing Custom Domains
 
-Add, remove, list, or view stats of custom blocked domains via artisan:
-
 ```bash
-# Add a domain
 php artisan filament-security:domain add spam-provider.com
-
-# Remove a domain
 php artisan filament-security:domain remove spam-provider.com
-
-# List custom domains
 php artisan filament-security:domain list
-
-# View statistics
 php artisan filament-security:domain stats
-```
-
-Output of `stats`:
-
-```
-┌──────────────────────┬────────┐
-│ Source               │ Count  │
-├──────────────────────┼────────┤
-│ Built-in domains     │ 192,744 │
-│ Custom file domains  │ 2      │
-│ Config domains       │ 0      │
-│ Whitelisted domains  │ 0      │
-│ Total active domains │ 192,746 │
-└──────────────────────┴────────┘
 ```
 
 ### Configuration
 
 ```php
-// config/filament-security.php
-
 'disposable_email' => [
     'enabled' => env('FILAMENT_SECURITY_DISPOSABLE_EMAIL', true),
-
-    // Cache the domain list (recommended)
     'cache_enabled' => env('FILAMENT_SECURITY_CACHE', true),
-    'cache_ttl' => 1440, // minutes (24h)
-
-    // Additional domains to block
-    'custom_domains' => [
-        'my-spam-domain.com',
-    ],
-
-    // Domains to allow even if in the block list
-    'whitelisted_domains' => [
-        'company-internal-temp.com',
-    ],
+    'cache_ttl' => 1440,
+    'custom_domains' => [],
+    'whitelisted_domains' => [],
 ],
 ```
 
@@ -184,14 +187,13 @@ Email submitted → Extract domain → Check MX records
 
 ### Enabled by default
 
-DNS/MX verification is enabled by default and runs automatically on the registration form alongside the disposable email check. No extra setup required.
+DNS/MX verification is enabled by default. No extra setup required.
 
 ### Usage as Validation Rule
 
 ```php
 use WallaceMartinss\FilamentSecurity\DisposableEmail\Rules\DnsMxRule;
 
-// In any form request or validator
 'email' => ['required', 'email', new DnsMxRule],
 ```
 
@@ -201,24 +203,15 @@ use WallaceMartinss\FilamentSecurity\DisposableEmail\Rules\DnsMxRule;
 use WallaceMartinss\FilamentSecurity\DisposableEmail\DnsVerificationService;
 
 DnsVerificationService::isSuspicious('user@nonexistent-domain.xyz'); // true
-DnsVerificationService::isSuspicious('user@gmail.com');               // false
-
-// Check domain directly
-DnsVerificationService::isDomainSuspicious('fake-domain.xyz'); // true
+DnsVerificationService::isDomainSuspicious('fake-domain.xyz');       // true
 ```
 
 ### Configuration
 
 ```php
-// config/filament-security.php
-
 'dns_verification' => [
     'enabled' => env('FILAMENT_SECURITY_DNS_CHECK', true),
-
-    // Cache DNS results (recommended to avoid repeated lookups)
     'cache_enabled' => env('FILAMENT_SECURITY_CACHE', true),
-
-    // Cache TTL in minutes (default: 1 hour)
     'cache_ttl' => 60,
 ],
 ```
@@ -227,31 +220,19 @@ DnsVerificationService::isDomainSuspicious('fake-domain.xyz'); // true
 
 | Condition | Result |
 |-----------|--------|
-| No MX, no A, no AAAA records | **Blocked** — domain cannot receive email |
-| MX pointing to `localhost` | **Blocked** — suspicious configuration |
-| MX pointing to private/reserved IP (127.x, 10.x, 192.168.x) | **Blocked** — not a real mail server |
+| No MX, no A, no AAAA records | **Blocked** |
+| MX pointing to `localhost` or private IP | **Blocked** |
 | Valid MX records | **Allowed** |
-| No MX but has A/AAAA record | **Allowed** — RFC 5321 implicit MX |
-| DNS lookup fails | **Allowed** — fail-open to avoid false positives |
+| No MX but has A/AAAA record | **Allowed** (RFC 5321) |
+| DNS lookup fails | **Allowed** (fail-open) |
 
 ## Layer 3: Domain Age Verification (RDAP)
 
-Checks the domain registration age via [RDAP](https://about.rdap.org/) (Registration Data Access Protocol), the modern successor to WHOIS. Blocks recently registered domains — a common pattern in spam, phishing, and fraud campaigns.
-
-### How it works
-
-```
-Email submitted → Extract domain → Get TLD
-  → Query IANA RDAP bootstrap (https://data.iana.org/rdap/dns.json)
-  → Find RDAP server for TLD
-  → Query RDAP server for domain registration date
-  → Calculate domain age in days
-  → Block if age < min_days
-```
+Checks the domain registration age via [RDAP](https://about.rdap.org/) (Registration Data Access Protocol). Blocks recently registered domains — a common pattern in spam, phishing, and fraud campaigns.
 
 ### Disabled by default
 
-This feature makes external HTTP calls to RDAP servers, so it is **disabled by default**. Enable it via `.env`:
+This feature makes external HTTP calls to RDAP servers. Enable it via `.env`:
 
 ```env
 FILAMENT_SECURITY_DOMAIN_AGE=true
@@ -263,7 +244,6 @@ FILAMENT_SECURITY_DOMAIN_MIN_DAYS=30
 ```php
 use WallaceMartinss\FilamentSecurity\DisposableEmail\Rules\DomainAgeRule;
 
-// In any form request or validator
 'email' => ['required', 'email', new DomainAgeRule],
 ```
 
@@ -272,32 +252,18 @@ use WallaceMartinss\FilamentSecurity\DisposableEmail\Rules\DomainAgeRule;
 ```php
 use WallaceMartinss\FilamentSecurity\DisposableEmail\RdapService;
 
-RdapService::isDomainTooYoung('user@brand-new-domain.com'); // true (if < 30 days old)
-RdapService::isDomainTooYoung('user@gmail.com');             // false
-
-// Get the registration date directly
-$date = RdapService::getRegistrationDate('example.com');
-// Returns Carbon instance or null
+RdapService::isDomainTooYoung('user@brand-new-domain.com'); // true
+$date = RdapService::getRegistrationDate('example.com');     // Carbon|null
 ```
 
 ### Configuration
 
 ```php
-// config/filament-security.php
-
 'domain_age' => [
     'enabled' => env('FILAMENT_SECURITY_DOMAIN_AGE', false),
-
-    // Minimum domain age in days
     'min_days' => env('FILAMENT_SECURITY_DOMAIN_MIN_DAYS', 30),
-
-    // Block when RDAP lookup fails? (conservative: false)
     'block_on_failure' => env('FILAMENT_SECURITY_DOMAIN_AGE_STRICT', false),
-
-    // Cache RDAP results (recommended — external HTTP calls)
     'cache_enabled' => env('FILAMENT_SECURITY_CACHE', true),
-
-    // Cache TTL in minutes (default: 24 hours)
     'cache_ttl' => 1440,
 ],
 ```
@@ -312,16 +278,9 @@ $date = RdapService::getRegistrationDate('example.com');
 | Domain age >= min_days | Allow | Allow |
 | Domain age < min_days | Block | Block |
 
-### Caching
-
-RDAP results are cached to minimize external HTTP calls:
-
-- **IANA bootstrap data** — cached for 24 hours (shared across all domains)
-- **Domain registration dates** — cached for 24 hours (per domain, configurable via `cache_ttl`)
-
 ## Layer 4: Single Session Enforcement
 
-Ensures only **one active session per user**. When a user logs in from a new browser or device, all previous sessions are immediately terminated. Works with both **database** and **Redis** session drivers.
+Ensures only **one active session per user**. When a user logs in from a new browser or device, all previous sessions are immediately terminated. Works with **database**, **Redis**, and **file** session drivers.
 
 ### How it works
 
@@ -335,82 +294,45 @@ User returns to Browser A → Session A no longer exists → Redirected to login
 
 ### Disabled by default
 
-Enable via `.env`:
-
 ```env
 FILAMENT_SECURITY_SINGLE_SESSION=true
-```
-
-And in the plugin:
-
-```php
-FilamentSecurityPlugin::make()
-    ->singleSession()
 ```
 
 ### Session driver support
 
 | Driver | Destruction method | Enforcement |
 |--------|-------------------|-------------|
-| `database` | Bulk DELETE from `sessions` table by `user_id` | Immediate (session row deleted) |
-| `redis` | Destroy session key via session handler | Immediate (key deleted) + middleware fallback |
-| `file` | Destroy session file via session handler | Immediate (file deleted) + middleware fallback |
-
-For the **database** driver, all other sessions for the user are deleted in a single query on login. For **Redis** and **file** drivers, the previously tracked session is destroyed via the session handler, and a middleware acts as a safety net to catch any edge cases.
-
-### Architecture
-
-The feature uses a **dual mechanism** for reliability:
-
-1. **Login event listener** (`HandleSuccessfulLogin`) — immediately destroys other sessions on login
-2. **Middleware** (`SingleSessionMiddleware`) — validates on every request that the current session is still the active one
-
-The middleware is automatically registered in the `web` middleware group when the feature is enabled.
+| `database` | Bulk DELETE by `user_id` | Immediate |
+| `redis` | Destroy session key via handler | Immediate + middleware fallback |
+| `file` | Destroy session file via handler | Immediate + middleware fallback |
 
 ### Programmatic Usage
 
 ```php
 use WallaceMartinss\FilamentSecurity\SingleSession\SingleSessionService;
 
-// Invalidate all other sessions for a user (call after manual login)
 SingleSessionService::handleLogin($user);
-
-// Clear session tracking (call on manual logout)
 SingleSessionService::clearTracking($user->id);
 ```
 
 ### Configuration
 
 ```php
-// config/filament-security.php
-
 'single_session' => [
     'enabled' => env('FILAMENT_SECURITY_SINGLE_SESSION', false),
 ],
 ```
 
-### Requirements
-
-- Session driver must be `database`, `redis`, or `file`
-- For `database`: the `sessions` table must exist (ships with Laravel by default)
-- Cache driver must be configured (used for session tracking across drivers)
-
 ## Layer 5: Honeypot Protection
 
 Protects registration forms against bots using invisible honeypot fields. Powered by [spatie/laravel-honeypot](https://github.com/spatie/laravel-honeypot).
-
-### How it works
 
 Two invisible fields are injected into the registration form:
 
 1. **Empty field** - Bots auto-fill all fields; if this field has a value, the submission is rejected
 2. **Timestamp field** - Tracks how fast the form was submitted; instant submissions are rejected
 
-### Filament Registration Integration
-
-When `honeypotProtection()` is enabled, the honeypot fields are **automatically** injected into the registration form. The `protectAgainstSpam()` check runs before user creation.
-
-No extra configuration needed beyond enabling it in the plugin:
+### Enabled by default
 
 ```php
 FilamentSecurityPlugin::make()
@@ -418,8 +340,6 @@ FilamentSecurityPlugin::make()
 ```
 
 ### Custom Registration Page
-
-If you have a custom registration page, use the trait:
 
 ```php
 use Filament\Auth\Pages\Register;
@@ -431,44 +351,18 @@ class CustomRegister extends Register
 }
 ```
 
-### Honeypot Configuration
-
-The honeypot behavior is configured via Spatie's config file:
-
-```bash
-php artisan vendor:publish --tag=honeypot-config
-```
-
-```php
-// config/honeypot.php
-
-return [
-    'enabled' => env('HONEYPOT_ENABLED', true),
-    'name_field_name' => 'my_name',
-    'randomize_name_field_name' => true,
-    'valid_from_field_name' => 'valid_from',
-    'amount_of_seconds' => 1, // Minimum seconds before submission is valid
-    'respond_to_spam_with' => \Spatie\Honeypot\SpamResponder\BlankPageResponder::class,
-];
-```
-
-### Spam Detection Response
-
-When spam is detected, the request is aborted with a `403 Forbidden` response. A `SpamDetectedEvent` is also fired, which you can listen to for logging or IP blocking (Layer 6).
+When spam is detected, the request is aborted with `403 Forbidden`. A `SpamDetectedEvent` is also fired for logging or IP blocking (Layer 6).
 
 ## Layer 6: Cloudflare IP Blocking
 
 Automatically blocks suspicious IPs on Cloudflare WAF after repeated failed login attempts or bot detection via honeypot.
-
-### How it works
 
 ```
 Failed Login → RateLimiter counts attempts → Exceeds threshold → Cloudflare API block
 Honeypot Spam → Instant Cloudflare API block
 ```
 
-The package resolves the **real client IP** through the header chain:
-`CF-Connecting-IP` > `X-Real-IP` > `X-Forwarded-For` > `REMOTE_ADDR`
+Real client IP resolved through: `CF-Connecting-IP` > `X-Real-IP` > `X-Forwarded-For` > `REMOTE_ADDR`
 
 ### Setup
 
@@ -491,8 +385,6 @@ php artisan migrate
 
 ```php
 FilamentSecurityPlugin::make()
-    ->disposableEmailProtection()
-    ->honeypotProtection()
     ->cloudflareBlocking()
 ```
 
@@ -501,63 +393,22 @@ FilamentSecurityPlugin::make()
 #### API Token
 
 1. Go to [Cloudflare Dashboard > My Profile > API Tokens](https://dash.cloudflare.com/profile/api-tokens)
-2. Click **"Create Token"**
-3. Select **"Create Custom Token"**
-4. Configure the token:
-   - **Token name:** `FilamentSecurity`
-   - **Permissions:** `Zone` > `Firewall Services` > `Edit`
-   - **Zone Resources:** `Include` > `Specific zone` > select your domain
-5. Click **"Continue to summary"** > **"Create Token"**
-6. Copy the token and add to your `.env` as `CLOUDFLARE_API_TOKEN`
+2. Click **"Create Token"** > **"Create Custom Token"**
+3. **Permissions:** `Zone` > `Firewall Services` > `Edit`
+4. **Zone Resources:** `Include` > `Specific zone` > select your domain
 
 #### Zone ID
 
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) and select your domain
-2. On the **Overview** page, scroll down to the right sidebar
-3. Under **API** section, copy the **Zone ID**
-4. Add to your `.env` as `CLOUDFLARE_ZONE_ID`
-
-### Automatic Blocking Triggers
-
-| Trigger | Behavior |
-|---------|----------|
-| Failed login attempts | Blocks after `max_attempts` (default: 5) within `decay_minutes` (default: 30) |
-| Honeypot spam detected | **Instant block** - no threshold needed |
-
-Both triggers are registered via Laravel event listeners:
-- `Illuminate\Auth\Events\Failed` → `HandleFailedLogin`
-- `Spatie\Honeypot\Events\SpamDetectedEvent` → `HandleSpamDetected`
+2. On the **Overview** page, scroll down to the right sidebar > **API** section > copy **Zone ID**
 
 ### Managing Blocked IPs
 
 ```bash
-# List active blocks
 php artisan filament-security:blocked-ips list
-
-# View configuration status
 php artisan filament-security:blocked-ips status
-
-# Manually block an IP
 php artisan filament-security:blocked-ips block 203.0.113.50 --reason="Manual block"
-
-# Unblock an IP
 php artisan filament-security:blocked-ips unblock 203.0.113.50 --force
-```
-
-Output of `status`:
-
-```
-┌─────────────────────────┬───────┐
-│ Setting                 │ Value │
-├─────────────────────────┼───────┤
-│ Cloudflare configured   │ Yes   │
-│ Cloudflare enabled      │ Yes   │
-│ Block mode              │ block │
-│ Max attempts            │ 5     │
-│ Decay minutes           │ 30    │
-│ Active blocks           │ 3     │
-│ Total blocks (all time) │ 12    │
-└─────────────────────────┴───────┘
 ```
 
 ### Programmatic Usage
@@ -566,66 +417,228 @@ Output of `status`:
 use WallaceMartinss\FilamentSecurity\Cloudflare\BlockIpService;
 use WallaceMartinss\FilamentSecurity\Cloudflare\IpResolver;
 
-// Resolve real client IP
 $ip = IpResolver::resolve();
-
-// Block an IP
 app(BlockIpService::class)->blockIp($ip, 'Custom reason');
-
-// Unblock an IP
 app(BlockIpService::class)->unblockIp($ip);
-
-// Record a failed attempt (auto-blocks on threshold)
 app(BlockIpService::class)->recordFailedAttempt($ip, 'Failed login');
-
-// Check remaining attempts
 app(BlockIpService::class)->remainingAttempts($ip);
 ```
 
 ### Configuration
 
 ```php
-// config/filament-security.php
-
 'cloudflare' => [
     'enabled' => env('FILAMENT_SECURITY_CLOUDFLARE', false),
     'api_token' => env('CLOUDFLARE_API_TOKEN'),
     'zone_id' => env('CLOUDFLARE_ZONE_ID'),
     'max_attempts' => env('FILAMENT_SECURITY_CF_MAX_ATTEMPTS', 5),
     'decay_minutes' => env('FILAMENT_SECURITY_CF_DECAY_MINUTES', 30),
-    'mode' => env('FILAMENT_SECURITY_CF_MODE', 'block'), // 'block' or 'challenge'
+    'mode' => env('FILAMENT_SECURITY_CF_MODE', 'block'),
     'note_prefix' => 'FilamentSecurity: Auto-blocked',
+],
+```
+
+## Layer 7: Malicious Scan Protection
+
+Detects and blocks requests to known exploit paths, config files, web shells, and CMS admin pages. Returns `404` and logs the attempt as a security event.
+
+### What is detected
+
+| Category | Examples |
+|----------|---------|
+| Config/env files | `.env`, `.git`, `.htaccess`, `wp-config.php` |
+| Package files | `composer.json`, `package.json`, `yarn.lock` |
+| Credentials | `credentials.json`, `firebase.json`, `database.json` |
+| WordPress/CMS | `wp-admin`, `wp-login`, `xmlrpc.php` |
+| Web shells | `shell.php`, `cmd.php`, `c99`, `r57`, `webshell` |
+| Exploit paths | `etc/passwd`, `proc/self`, `../../..` |
+| Admin panels | `phpmyadmin`, `adminer`, `pgadmin`, `cPanel` |
+| Debug endpoints | `phpinfo`, `_debug`, `_profiler`, `actuator` |
+
+### Disabled by default
+
+```env
+FILAMENT_SECURITY_MALICIOUS_SCAN=true
+```
+
+```php
+FilamentSecurityPlugin::make()
+    ->maliciousScanProtection()
+```
+
+The middleware is automatically registered in the `web` middleware group when enabled.
+
+### Configuration
+
+```php
+'malicious_scan' => [
+    'enabled' => env('FILAMENT_SECURITY_MALICIOUS_SCAN', false),
+],
+```
+
+## Layer 8: Security Event Dashboard
+
+A complete Filament resource that records and visualizes all security events across every layer. Provides a real-time dashboard with stats, charts, and a threat intelligence table.
+
+### What is recorded
+
+Every layer in the plugin automatically records events when the Event Log is enabled:
+
+| Event Type | Source Layer | Trigger |
+|------------|-------------|---------|
+| `disposable_email` | Layer 1 | Disposable email blocked during registration |
+| `dns_mx_suspicious` | Layer 2 | Domain with no valid mail servers |
+| `domain_too_young` | Layer 3 | Domain registered too recently |
+| `session_terminated` | Layer 4 | User session killed by newer login |
+| `honeypot_triggered` | Layer 5 | Bot detected via honeypot |
+| `login_lockout` | Layer 6 | Failed login attempt |
+| `ip_blocked` | Layer 6 | IP blocked on Cloudflare |
+| `ip_unblocked` | Layer 6 | IP unblocked via panel |
+| `malicious_scan` | Layer 7 | Exploit path accessed |
+
+### Setup
+
+1. Enable in `.env`:
+
+```env
+FILAMENT_SECURITY_EVENT_LOG=true
+```
+
+2. Publish and run the migration:
+
+```bash
+php artisan vendor:publish --tag=filament-security-migrations
+php artisan migrate
+```
+
+3. Enable in the plugin:
+
+```php
+FilamentSecurityPlugin::make()
+    ->eventLog()
+```
+
+### Dashboard features
+
+The Security Events page includes:
+
+**Header Widgets (4 stat cards):**
+- Events Today (with trend vs yesterday + 7-day mini chart)
+- IPs Blocked Today
+- Top Threat (7 days)
+- Unique IPs (7 days)
+
+**Tabs (filtered by category):**
+- Email — disposable emails, DNS/MX, domain age
+- Bots & Scans — honeypot, malicious scans
+- Session — terminated sessions
+- Auth — login lockouts
+- IP Management — blocked/unblocked IPs
+
+**Footer Widgets (3 charts):**
+- Threat Activity (14-day line chart by category)
+- Events by Type (7-day doughnut chart)
+- Top Offending IPs (table with top 10 attackers, event count, location, ban status)
+
+**Table features:**
+- Live polling every 30 seconds
+- Dynamic columns per tab (email, path, user_agent, trigger info)
+- Copyable IP badges
+- Country flags with city/org tooltip
+- Type filter (multi-select)
+
+**Actions:**
+- **Backfill IP Locations** — header action to enrich IPs without geolocation via IpInfo API
+- **Unban IP** — row action to remove Cloudflare block directly from the table
+
+### Programmatic Usage
+
+```php
+use WallaceMartinss\FilamentSecurity\EventLog\Models\SecurityEvent;
+
+// Record a custom security event
+SecurityEvent::record('custom_event_type', [
+    'email' => 'user@example.com',
+    'domain' => 'example.com',
+    'metadata' => ['reason' => 'Custom reason'],
+]);
+```
+
+### Configuration
+
+```php
+'event_log' => [
+    'enabled' => env('FILAMENT_SECURITY_EVENT_LOG', false),
+],
+```
+
+## IpInfo Integration (Optional)
+
+Enrich security events with IP geolocation data (country, city, organization) from [ipinfo.io](https://ipinfo.io). This is **completely optional** — if no token is provided, everything works without geolocation.
+
+### Setup
+
+1. Get a free API token at [ipinfo.io/signup](https://ipinfo.io/signup)
+2. Add to `.env`:
+
+```env
+IPINFO_TOKEN=your_token_here
+```
+
+### How it works
+
+- When a security event is recorded, the IP is **automatically enriched** with country, city, and org data
+- Results are **cached for 24 hours** per IP to minimize API calls
+- The **Backfill Locations** action in the dashboard lets you retroactively enrich existing events
+- If the token is not set, geolocation is silently skipped
+
+### Configuration
+
+```php
+'ipinfo' => [
+    'token' => env('IPINFO_TOKEN'),
+    'timeout' => 5,
+    'cache_ttl' => 1440, // minutes (24h)
 ],
 ```
 
 ## Environment Variables
 
 ```env
-# Disposable Email
+# Disposable Email (Layer 1)
 FILAMENT_SECURITY_DISPOSABLE_EMAIL=true   # Enable/disable disposable email blocking
 FILAMENT_SECURITY_CACHE=true              # Enable/disable caching (shared across features)
 
-# DNS/MX Verification
+# DNS/MX Verification (Layer 2)
 FILAMENT_SECURITY_DNS_CHECK=true          # Enable/disable DNS/MX check (default: enabled)
 
-# Domain Age (RDAP)
-FILAMENT_SECURITY_DOMAIN_AGE=false        # Enable/disable domain age check (default: disabled)
+# Domain Age / RDAP (Layer 3)
+FILAMENT_SECURITY_DOMAIN_AGE=false        # Enable/disable domain age check
 FILAMENT_SECURITY_DOMAIN_MIN_DAYS=30      # Minimum domain age in days
 FILAMENT_SECURITY_DOMAIN_AGE_STRICT=false # Block when RDAP lookup fails
 
-# Single Session
-FILAMENT_SECURITY_SINGLE_SESSION=false    # Enable/disable one session per user (default: disabled)
+# Single Session (Layer 4)
+FILAMENT_SECURITY_SINGLE_SESSION=false    # Enable/disable one session per user
 
-# Honeypot
+# Honeypot (Layer 5)
 FILAMENT_SECURITY_HONEYPOT=true           # Enable/disable honeypot protection
 
-# Cloudflare
+# Cloudflare (Layer 6)
 FILAMENT_SECURITY_CLOUDFLARE=false        # Enable/disable Cloudflare blocking
 CLOUDFLARE_API_TOKEN=                     # Cloudflare API token
 CLOUDFLARE_ZONE_ID=                       # Cloudflare zone ID
 FILAMENT_SECURITY_CF_MAX_ATTEMPTS=5       # Failed attempts before blocking
 FILAMENT_SECURITY_CF_DECAY_MINUTES=30     # Time window for counting attempts
 FILAMENT_SECURITY_CF_MODE=block           # 'block' or 'challenge'
+
+# Malicious Scan (Layer 7)
+FILAMENT_SECURITY_MALICIOUS_SCAN=false    # Enable/disable malicious scan detection
+
+# Security Event Log (Layer 8)
+FILAMENT_SECURITY_EVENT_LOG=false         # Enable/disable security event dashboard
+
+# IpInfo (Optional geolocation)
+IPINFO_TOKEN=                             # IpInfo API token (optional)
 ```
 
 ## Testing

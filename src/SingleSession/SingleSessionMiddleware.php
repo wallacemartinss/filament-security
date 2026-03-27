@@ -6,6 +6,8 @@ use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
+use WallaceMartinss\FilamentSecurity\EventLog\Enums\SecurityEventType;
+use WallaceMartinss\FilamentSecurity\EventLog\Models\SecurityEvent;
 
 class SingleSessionMiddleware
 {
@@ -48,6 +50,14 @@ class SingleSessionMiddleware
         }
 
         // Session mismatch — this session was superseded by a newer login
+        SecurityEvent::record(SecurityEventType::SessionTerminated->value, [
+            'ip_address' => $request->ip(),
+            'metadata' => [
+                'user_id' => $userId,
+                'superseded_by' => $activeSessionId,
+            ],
+        ]);
+
         SingleSessionService::$isForcedLogout = true;
 
         auth()->logout();

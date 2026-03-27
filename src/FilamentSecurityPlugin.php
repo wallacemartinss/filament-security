@@ -6,6 +6,7 @@ use Filament\Auth\Pages\Register;
 use Filament\Contracts\Plugin;
 use Filament\Panel;
 use WallaceMartinss\FilamentSecurity\Auth\FilamentSecurityRegister;
+use WallaceMartinss\FilamentSecurity\Filament\Resources\SecurityEventResource;
 
 class FilamentSecurityPlugin implements Plugin
 {
@@ -16,6 +17,10 @@ class FilamentSecurityPlugin implements Plugin
     protected bool $hasCloudflareBlocking = false;
 
     protected bool $hasSingleSession = false;
+
+    protected bool $hasEventLog = false;
+
+    protected bool $hasMaliciousScanProtection = false;
 
     public static function make(): static
     {
@@ -39,6 +44,12 @@ class FilamentSecurityPlugin implements Plugin
     {
         if ($this->hasDisposableEmailProtection() || $this->hasHoneypotProtection()) {
             $this->registerSecureRegistrationPage($panel);
+        }
+
+        if ($this->hasEventLog()) {
+            $panel->resources([
+                SecurityEventResource::class,
+            ]);
         }
     }
 
@@ -94,6 +105,20 @@ class FilamentSecurityPlugin implements Plugin
         return $this;
     }
 
+    public function eventLog(bool $condition = true): static
+    {
+        $this->hasEventLog = $condition;
+
+        return $this;
+    }
+
+    public function maliciousScanProtection(bool $condition = true): static
+    {
+        $this->hasMaliciousScanProtection = $condition;
+
+        return $this;
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Getters
@@ -118,5 +143,15 @@ class FilamentSecurityPlugin implements Plugin
     public function hasSingleSession(): bool
     {
         return $this->hasSingleSession && config('filament-security.single_session.enabled', false);
+    }
+
+    public function hasEventLog(): bool
+    {
+        return $this->hasEventLog && config('filament-security.event_log.enabled', false);
+    }
+
+    public function hasMaliciousScanProtection(): bool
+    {
+        return $this->hasMaliciousScanProtection && config('filament-security.malicious_scan.enabled', false);
     }
 }

@@ -5,6 +5,8 @@ namespace WallaceMartinss\FilamentSecurity\Listeners;
 use Illuminate\Auth\Events\Failed;
 use WallaceMartinss\FilamentSecurity\Cloudflare\BlockIpService;
 use WallaceMartinss\FilamentSecurity\Cloudflare\IpResolver;
+use WallaceMartinss\FilamentSecurity\EventLog\Enums\SecurityEventType;
+use WallaceMartinss\FilamentSecurity\EventLog\Models\SecurityEvent;
 
 class HandleFailedLogin
 {
@@ -14,13 +16,17 @@ class HandleFailedLogin
 
     public function handle(Failed $event): void
     {
+        $ip = IpResolver::resolve();
+        $email = $event->credentials['email'] ?? 'unknown';
+
+        SecurityEvent::record(SecurityEventType::LoginLockout->value, [
+            'ip_address' => $ip,
+            'email' => $email,
+        ]);
+
         if (! config('filament-security.cloudflare.enabled', false)) {
             return;
         }
-
-        $ip = IpResolver::resolve();
-
-        $email = $event->credentials['email'] ?? 'unknown';
 
         $this->blockIpService->recordFailedAttempt(
             $ip,
