@@ -15,6 +15,7 @@ use WallaceMartinss\FilamentSecurity\Listeners\HandleFailedLogin;
 use WallaceMartinss\FilamentSecurity\Listeners\HandleLogout;
 use WallaceMartinss\FilamentSecurity\Listeners\HandleSpamDetected;
 use WallaceMartinss\FilamentSecurity\Listeners\HandleSuccessfulLogin;
+use WallaceMartinss\FilamentSecurity\Middleware\BlockMaliciousScans;
 use WallaceMartinss\FilamentSecurity\SingleSession\SingleSessionMiddleware;
 
 class FilamentSecurityServiceProvider extends PackageServiceProvider
@@ -28,6 +29,7 @@ class FilamentSecurityServiceProvider extends PackageServiceProvider
             ->hasTranslations()
             ->hasMigrations([
                 '2026_01_01_000001_create_security_blocked_ips_table',
+                '2026_01_01_000002_create_security_events_table',
             ]);
     }
 
@@ -42,6 +44,7 @@ class FilamentSecurityServiceProvider extends PackageServiceProvider
         $this->registerCommands();
         $this->registerEventListeners();
         $this->registerSingleSessionMiddleware();
+        $this->registerMaliciousScanMiddleware();
     }
 
     protected function registerCommands(): void
@@ -57,7 +60,10 @@ class FilamentSecurityServiceProvider extends PackageServiceProvider
 
     protected function registerEventListeners(): void
     {
-        if (config('filament-security.cloudflare.enabled', false)) {
+        $cloudflareOrEventLog = config('filament-security.cloudflare.enabled', false)
+            || config('filament-security.event_log.enabled', false);
+
+        if ($cloudflareOrEventLog) {
             Event::listen(Failed::class, HandleFailedLogin::class);
             Event::listen(SpamDetectedEvent::class, HandleSpamDetected::class);
         }
@@ -75,5 +81,17 @@ class FilamentSecurityServiceProvider extends PackageServiceProvider
         }
 
         $this->app['router']->pushMiddlewareToGroup('web', SingleSessionMiddleware::class);
+    }
+
+    protected function registerMaliciousScanMiddleware(): void
+    {
+        if (! config('filament-security.malicious_scan.enabled', false)) {
+            return;
+        }
+
+        // Must be global middleware (not web group) to intercept
+        // requests to non-existent routes (wp-admin, .env, etc.)
+        $this->app->make(\Illuminate\Contracts\Http\Kernel::class)
+            ->pushMiddleware(BlockMaliciousScans::class);
     }
 }

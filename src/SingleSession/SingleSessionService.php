@@ -6,6 +6,8 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use WallaceMartinss\FilamentSecurity\EventLog\Enums\SecurityEventType;
+use WallaceMartinss\FilamentSecurity\EventLog\Models\SecurityEvent;
 
 class SingleSessionService
 {
@@ -23,10 +25,46 @@ class SingleSessionService
         $currentSessionId = session()->getId();
         $userId = $user->getAuthIdentifier();
 
+        // Check if there are other sessions to destroy (for event logging)
+        $hadOtherSessions = static::hasOtherSessions($userId, $currentSessionId);
+
         static::destroyOtherSessions($userId, $currentSessionId);
+
+        if ($hadOtherSessions) {
+            SecurityEvent::record(SecurityEventType::SessionTerminated->value, [
+                'metadata' => [
+                    'user_id' => $userId,
+                    'new_session' => $currentSessionId,
+                ],
+            ]);
+        }
 
         // Flag for middleware to update tracking after session regeneration
         session()->put('filament-security:activate-session', true);
+    }
+
+    /**
+     * Check if the user has other active sessions.
+     */
+    protected static function hasOtherSessions(int|string $userId, string $exceptSessionId): bool
+    {
+        $driver = config('session.driver');
+
+        if ($driver === 'database') {
+            try {
+                return DB::table(config('session.table', 'sessions'))
+                    ->where('user_id', $userId)
+                    ->where('id', '!=', $exceptSessionId)
+                    ->exists();
+            } catch (\Throwable) {
+                return false;
+            }
+        }
+
+        // For other drivers: check if there's a tracked session different from current
+        $previousSessionId = Cache::get(static::cacheKey($userId));
+
+        return $previousSessionId !== null && $previousSessionId !== $exceptSessionId;
     }
 
     /**
