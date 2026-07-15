@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace WallaceMartinss\FilamentSecurity\Tests\Unit;
 
+use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Cache;
 use PHPUnit\Framework\Attributes\Test;
@@ -57,9 +58,9 @@ final class SingleSessionServiceTest extends TestCase
         $this->assertFalse(SingleSessionService::$isForcedLogout);
     }
 
-    private function createMockUser(int $id): \Illuminate\Contracts\Auth\Authenticatable
+    private function createMockUser(int $id): Authenticatable
     {
-        $user = $this->createMock(\Illuminate\Contracts\Auth\Authenticatable::class);
+        $user = $this->createMock(Authenticatable::class);
         $user->method('getAuthIdentifier')->willReturn($id);
 
         return $user;

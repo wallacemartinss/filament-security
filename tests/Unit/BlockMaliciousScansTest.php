@@ -7,6 +7,7 @@ namespace WallaceMartinss\FilamentSecurity\Tests\Unit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use PHPUnit\Framework\Attributes\Test;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use WallaceMartinss\FilamentSecurity\Middleware\BlockMaliciousScans;
 use WallaceMartinss\FilamentSecurity\Tests\TestCase;
 
@@ -121,7 +122,7 @@ final class BlockMaliciousScansTest extends TestCase
             });
 
             return false;
-        } catch (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException) {
+        } catch (NotFoundHttpException) {
             return true;
         }
     }

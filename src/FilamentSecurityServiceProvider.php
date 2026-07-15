@@ -5,6 +5,7 @@ namespace WallaceMartinss\FilamentSecurity;
 use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Auth\Events\Logout;
+use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Support\Facades\Event;
 use Spatie\Honeypot\Events\SpamDetectedEvent;
 use Spatie\LaravelPackageTools\Package;
@@ -91,7 +92,7 @@ class FilamentSecurityServiceProvider extends PackageServiceProvider
 
         // Must be global middleware (not web group) to intercept
         // requests to non-existent routes (wp-admin, .env, etc.)
-        $this->app->make(\Illuminate\Contracts\Http\Kernel::class)
+        $this->app->make(Kernel::class)
             ->pushMiddleware(BlockMaliciousScans::class);
     }
 }
