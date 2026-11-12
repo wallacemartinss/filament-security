@@ -6,6 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 class BlockedIp extends Model
 {
+    /**
+     * The table has no created_at column. Pointing CREATED_AT at blocked_at
+     * makes latest() and oldest() order by the column that actually exists.
+     */
+    public const CREATED_AT = 'blocked_at';
+
     public $timestamps = false;
 
     protected $table = 'security_blocked_ips';

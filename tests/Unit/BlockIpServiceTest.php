@@ -61,6 +61,36 @@ final class BlockIpServiceTest extends TestCase
     }
 
     #[Test]
+    public function it_unblocks_the_most_recent_active_block(): void
+    {
+        $older = BlockedIp::create([
+            'ip_address' => '192.0.2.7',
+            'reason' => 'Older block',
+            'blocked_at' => now()->subDay(),
+        ]);
+
+        $newer = BlockedIp::create([
+            'ip_address' => '192.0.2.7',
+            'reason' => 'Newer block',
+            'blocked_at' => now(),
+        ]);
+
+        $this->assertTrue($this->service->unblockIp('192.0.2.7'));
+
+        $this->assertNotNull($newer->fresh()->unblocked_at);
+        $this->assertNull($older->fresh()->unblocked_at);
+    }
+
+    #[Test]
+    public function it_orders_latest_blocked_ips_by_blocked_at(): void
+    {
+        $sql = BlockedIp::query()->latest()->toSql();
+
+        $this->assertStringContainsString('"blocked_at" desc', $sql);
+        $this->assertStringNotContainsString('created_at', $sql);
+    }
+
+    #[Test]
     public function it_returns_false_unblocking_unknown_ip(): void
     {
         $result = $this->service->unblockIp('10.0.0.99');
